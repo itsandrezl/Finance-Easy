@@ -1,0 +1,107 @@
+CREATE DATABASE FinanceEasy;
+
+USE FinanceEasy;
+
+CREATE DATABASE IF NOT EXISTS FinanceEasy_DB;
+
+USE FinanceEasy_DB;
+
+-- 1. Tabela de Usuários (Base de tudo)
+CREATE TABLE usuarios (
+    id_usuario INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    data_nascimento DATE,
+    idade INT,
+    telefone VARCHAR(30),
+    email VARCHAR(100) UNIQUE NOT NULL, -- Email único para segurança
+    cpf VARCHAR(11) UNIQUE NOT NULL,    -- CPF único
+    endereco_completo VARCHAR(255)
+) ENGINE=InnoDB;
+
+-- 2. Tabela de Corretoras
+CREATE TABLE Corretora (
+    id_corretora INT AUTO_INCREMENT PRIMARY KEY,
+    nome_corretora VARCHAR(60) NOT NULL,
+    cnpj VARCHAR(14) UNIQUE
+) ENGINE=InnoDB;
+
+-- 3. Tabela de Classes (Limpa, sem campos redundantes)
+CREATE TABLE ClasseAtivo (
+    id_classe INT AUTO_INCREMENT PRIMARY KEY,
+    nome_classe VARCHAR(30) NOT NULL -- Ex: Ações, FIIs, Tesouro
+) ENGINE=InnoDB;
+
+-- 4. Carteiras vinculadas ao Usuário
+CREATE TABLE CarteiraUsuario (
+    id_carteira INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL, -- FK vinculando ao dono da carteira
+    nome_carteira VARCHAR(50) NOT NULL,
+    lucro_carteira DECIMAL(15,2) DEFAULT 0,
+    ganho_capital DECIMAL(15,2) DEFAULT 0,
+    dividendos_recebidos DECIMAL(15,2) DEFAULT 0,
+    patrimonio_total DECIMAL(15,2) DEFAULT 0,
+    valor_investido DECIMAL(15,2) DEFAULT 0,
+    data_criacao DATE NOT NULL,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 5. Ativos Cadastrados
+CREATE TABLE Ativos (
+    id_ativo INT AUTO_INCREMENT PRIMARY KEY,
+    id_classe INT NOT NULL,
+    ticket_ativo VARCHAR(15) NOT NULL, -- Ex: PETR4
+    setor_ativo VARCHAR(35),
+    nome_ativo VARCHAR(255),
+    quantidade_total_ativo DECIMAL(18,8) DEFAULT 0, -- Saldo acumulado
+    preco_medio DECIMAL(15,2) DEFAULT 0,
+    valor_total_posicao DECIMAL(15,2) DEFAULT 0,
+    FOREIGN KEY (id_classe) REFERENCES ClasseAtivo(id_classe)
+) ENGINE=InnoDB;
+
+-- 6. Metas de Alocação por Carteira
+CREATE TABLE MetaAlocacao (
+    id_meta INT AUTO_INCREMENT PRIMARY KEY,
+    id_carteira INT NOT NULL,
+    id_classe INT NOT NULL,
+    percentual_objetivo DECIMAL(5,2) NOT NULL,
+    FOREIGN KEY (id_carteira) REFERENCES CarteiraUsuario(id_carteira) ON DELETE CASCADE,
+    FOREIGN KEY (id_classe) REFERENCES ClasseAtivo(id_classe),
+    UNIQUE (id_carteira, id_classe) -- Impede duas metas para a mesma classe na mesma carteira
+) ENGINE=InnoDB;
+
+-- 7. Histórico de Aportes/Transações
+CREATE TABLE Aportes (
+    id_aporte INT AUTO_INCREMENT PRIMARY KEY,
+    id_carteira INT NOT NULL,
+    id_ativo INT NOT NULL,
+    id_corretora INT NOT NULL,
+    tipo_operacao ENUM('C', 'V') NOT NULL, -- Compra ou Venda
+    preco_unitario DECIMAL(15,2) NOT NULL,
+    quantidade_transacao DECIMAL(18,8) NOT NULL,
+    data_aporte DATE NOT NULL,
+    FOREIGN KEY (id_carteira) REFERENCES CarteiraUsuario(id_carteira),
+    FOREIGN KEY (id_ativo) REFERENCES Ativos(id_ativo),
+    FOREIGN KEY (id_corretora) REFERENCES Corretora(id_corretora)
+) ENGINE=InnoDB;
+
+-- 8. Histórico de Cotações
+CREATE TABLE CotacaoAtivo (
+    id_cotacao INT AUTO_INCREMENT PRIMARY KEY,
+    id_ativo INT NOT NULL,
+    preco_fechamento DECIMAL(15,2) NOT NULL,
+    data_preco DATE NOT NULL,
+    FOREIGN KEY (id_ativo) REFERENCES Ativos(id_ativo) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 9. Proventos Recebidos
+CREATE TABLE ProventosAtivo (
+    id_provento INT AUTO_INCREMENT PRIMARY KEY,
+    id_carteira INT NOT NULL,
+    id_ativo INT NOT NULL,
+    tipo_provento VARCHAR(30), -- Ex: Dividendo, JCP
+    valor_unitario DECIMAL(15,4) NOT NULL,
+    valor_total DECIMAL(15,2) NOT NULL,
+    data_pagamento DATE NOT NULL,
+    FOREIGN KEY (id_carteira) REFERENCES CarteiraUsuario(id_carteira),
+    FOREIGN KEY (id_ativo) REFERENCES Ativos(id_ativo)
+) ENGINE=InnoDB;
